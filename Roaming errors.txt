@@ -1,0 +1,73 @@
+
+#Drop page of a signal during roaming
+
+#Problem statement
+
+##You will be given a CDR (Call Details Record) file, you need to find out top 10 customers facing frequent call drops in Roaming.
+#####This is a very important report which telecom companies use to prevent customer churn out, by calling them back and at the same time 
+#####contacting their roaming partners to improve the connectivity issues in specific areas. 
+
+#####CDR.csv is the dataset 
+
+-----------------------------------------
+
+#####Read the cdr dataset from HDFS
+
+val cdr = sc.textFile("hdfs://nameservice1/user/edureka_142337/CDR.csv")
+
+val error = cdr.filter(_.contains("0x829F08"))
+
+error.collect()
+
+
+#####Collect location id, phone no, call duration
+
+val error1 = error.map(x=>(x.split(",")(0)+","+x.split(",")(2),x.split(",")(1).toInt))
+
+
+error1.collect()
+
+#####adding the call durations based on location and phone no
+
+val output = error1.reduceByKey(_+_)
+
+output.collect()
+
+output.map(x=>"%s,%s".format(x._1,x._2).saveAsTextFile("hdfs://nameservice1/user/edureka_142337/cdroutput")
+
+
+val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+
+import sqlContext.createSchemaRDD
+
+#####defining case class cdrtable
+
+case class cdrtable(location_id: String,phone_no: String, duration: Int)
+
+val table1 = sc.textFile("/hdfs://nameservice1/user/edureka_142337/cdroutput/part-00000").map(_.split(",")).map(t =>
+cdrtable(t(0),t(1),t(2).toInt))
+
+
+cdrtable.registerTempTable("cdrtable")
+
+
+val output1 = sqlContext.sql("SELECT location_id,phone_no,duration FROM
+cdrtable WHERE duration <= 5 ORDER BY duration LIMIT 100")
+
+output1.collect()
+
+val finaloutput =  output1.map(t =>t(0) + "," + t(1) + "," + t(2)).saveAsTextFile("hdfs://nameservice1/user/edureka_142337/cdrfinal")
+
+#####export data into mysql from hdfs using sqoop 
+
+
+
+
+
+ 
+
+
+
+
+
+
